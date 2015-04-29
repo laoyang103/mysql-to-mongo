@@ -61,7 +61,7 @@ def insert(sql):
             record_cached[insert_id] = []
 
         # cached or insert record to mongodb
-        if len(record_cached[insert_id]) > 1000: 
+        if len(record_cached[insert_id]) > 2000: 
             dataset.update({'_id': insert_id}, {"$push": {"records": {"$each": record_cached[insert_id]}}})
             record_cached[insert_id] = []
         else:
@@ -73,10 +73,6 @@ def insert(sql):
             dataset.update({'_id': k}, {"$push": {"records": {"$each": v}}})
             record_cached[k] = []
 
-    # write index dict to mongodb
-    for i in ipdict:
-        ipset.insert(ipdict[i])
-
 sql = "SELECT * FROM http_log_000000004 limit 0, 1000000"
 insert(sql)
 sql = "SELECT * FROM http_log_000000005 limit 0, 1000000"
@@ -85,6 +81,11 @@ sql = "SELECT * FROM http_log_000000006 limit 0, 1000000"
 insert(sql)
 sql = "SELECT * FROM http_log_000000008 limit 0, 1000000"
 insert(sql)
+
+
+# write index dict to mongodb
+for i in ipdict:
+    ipset.insert(ipdict[i])
 
 #        starttime1 = time.time()  
 #        endtime1 = time.time()  
