@@ -19,7 +19,7 @@ dataset.drop()
 ipdict = {}
 
 sql = "SELECT * FROM http_log_000000004 limit 0, 1000000"
-#sql = "SELECT * FROM http_log_000000004 where server = '192.168.1.12' limit 0, 10"
+#sql = "SELECT * FROM http_log_000000004 where server = '192.168.1.12' limit 0, 50"
 mysqldb = MySQLdb.connect("localhost","root","123456","ipm" )
 
 def insert():
@@ -44,15 +44,22 @@ def insert():
 
         # insert url timestamp 
         tree_url = ipdict[row[serverip]][no_point_domain][no_point_url]
-        if not tree_url.has_key(timestamp): 
-            tree_url[timestamp] = dataset.insert({'time': timestamp})
+        if (not tree_url.has_key(timestamp) and not tree_url.has_key('curr')) or (tree_url[tree_url['curr']]['count'] > 15000): 
+            tree_url[timestamp] = {}
+            tree_url[timestamp]['count'] = 0
+            tree_url[timestamp]['id'] = dataset.insert({'time': timestamp})
+            tree_url['curr'] = timestamp
+        tree_url[tree_url['curr']]['count'] += 1
 
         # fill data docment record
         fields = {}
         for i in range(34): fields[names[i]] = row[i]
 
+        starttime1 = time.time()  
         # insert record to mongodb
-        dataset.update({'_id': tree_url[timestamp]}, {"$push": {"records": fields}})
+        dataset.update({'_id': tree_url[tree_url['curr']]['id']}, {"$push": {"records": fields}})
+        endtime1 = time.time()  
+        print endtime1 - starttime1
     for i in ipdict:
         ipset.insert(ipdict[i])
 insert()
