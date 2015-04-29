@@ -21,14 +21,14 @@ def fetch(addr):
         if k == "_id": continue
         for _k, _v in v.items():
             for __k, __v in _v.items():
-                datakeys.append(__v)
+                if __k == "curr": continue
+                datakeys.append(__v['key'])
     fetch_num = 0
-    print len(datakeys)
     for i in datakeys:
         record = dataset.find_one({"_id" : i})
 #        print json.dumps(record['data'], indent=2)
         fetch_num += len(record['records'])
-    print fetch_num
+    print len(datakeys), fetch_num
 
 for ip in ips:
     starttime1 = time.clock()  

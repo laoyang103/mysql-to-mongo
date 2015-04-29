@@ -17,12 +17,12 @@ dataset = mongodb.dataset
 ipset.drop()
 dataset.drop()
 ipdict = {}
+record_cached = {}
 
-sql = "SELECT * FROM http_log_000000004 limit 0, 1000000"
 #sql = "SELECT * FROM http_log_000000004 where server = '192.168.1.12' limit 0, 50"
 mysqldb = MySQLdb.connect("localhost","root","123456","ipm" )
 
-def insert():
+def insert(sql):
     cursor = mysqldb.cursor()
     cursor.execute(sql)
     results = cursor.fetchall()
@@ -47,7 +47,7 @@ def insert():
         if (not tree_url.has_key(timestamp) and not tree_url.has_key('curr')) or (tree_url[tree_url['curr']]['count'] > 15000): 
             tree_url[timestamp] = {}
             tree_url[timestamp]['count'] = 0
-            tree_url[timestamp]['id'] = dataset.insert({'time': timestamp})
+            tree_url[timestamp]['key'] = dataset.insert({'time': timestamp})
             tree_url['curr'] = timestamp
         tree_url[tree_url['curr']]['count'] += 1
 
@@ -55,11 +55,37 @@ def insert():
         fields = {}
         for i in range(34): fields[names[i]] = row[i]
 
-        starttime1 = time.time()  
-        # insert record to mongodb
-        dataset.update({'_id': tree_url[tree_url['curr']]['id']}, {"$push": {"records": fields}})
-        endtime1 = time.time()  
-        print endtime1 - starttime1
+        # create insert cached
+        insert_id = tree_url[tree_url['curr']]['key']
+        if not record_cached.has_key(insert_id):
+            record_cached[insert_id] = []
+
+        # cached or insert record to mongodb
+        if len(record_cached[insert_id]) > 1000: 
+            dataset.update({'_id': insert_id}, {"$push": {"records": {"$each": record_cached[insert_id]}}})
+            record_cached[insert_id] = []
+        else:
+            record_cached[insert_id].append(fields)
+
+    # flush cached record
+    for k, v in record_cached.items():
+        if len(record_cached[k]) > 0: 
+            dataset.update({'_id': k}, {"$push": {"records": {"$each": v}}})
+            record_cached[k] = []
+
+    # write index dict to mongodb
     for i in ipdict:
         ipset.insert(ipdict[i])
-insert()
+
+sql = "SELECT * FROM http_log_000000004 limit 0, 1000000"
+insert(sql)
+sql = "SELECT * FROM http_log_000000005 limit 0, 1000000"
+insert(sql)
+sql = "SELECT * FROM http_log_000000006 limit 0, 1000000"
+insert(sql)
+sql = "SELECT * FROM http_log_000000008 limit 0, 1000000"
+insert(sql)
+
+#        starttime1 = time.time()  
+#        endtime1 = time.time()  
+#        print endtime1 - starttime1
