@@ -12,8 +12,8 @@ conn = pymongo.Connection()
 mongodb = conn.test
 ipset = mongodb.ipset
 dataset = mongodb.dataset
-ipset.drop()
-dataset.drop()
+#ipset.drop()
+#dataset.drop()
 record_cached = {}
 urlcnt_cached = {}
 
@@ -45,25 +45,31 @@ def insert(sql):
         tree_url = ipdoc[no_point_domain][no_point_url]
 
         # this url has no data or save more than 15000
-        if not tree_url.has_key('curr') or urlcnt_cached[tree_url['curr']['key']] > 15000:
+        if not tree_url.has_key('curr') or (urlcnt_cached.has_key(tree_url['curr']['key']) and urlcnt_cached[tree_url['curr']['key']] > 15000):
             if tree_url.has_key('curr'): del urlcnt_cached[tree_url['curr']['key']]
             insert_id = dataset.insert({})
-            tree_url['curr'] = {"key": insert_id, "count": 0}
+            tree_url['curr'] = {"time": timestamp, "key": insert_id, "count": 0}
             tree_url[timestamp] = {"key": insert_id, "count": 0}
             ipset.update({"_id": row[serverip]}, ipdoc)
             urlcnt_cached[insert_id] = 0
 
         # init new count cached from databases and common add 
-        if not urlcnt_cached.has_key(tree_url['curr']['key']):
-            urlcnt_cached[tree_url['curr']['key']] = tree_url['curr']['count']
-        urlcnt_cached[tree_url['curr']['key']] += 1
+        insert_id = tree_url['curr']['key']
+        if not urlcnt_cached.has_key(insert_id):
+            urlcnt_cached[insert_id] = tree_url['curr']['count']
+        urlcnt_cached[insert_id] += 1
+
+        # update url index tree count every 500 records
+        if urlcnt_cached[insert_id] % 500 == 0:
+            tree_url['curr']['count'] = urlcnt_cached[insert_id]
+            tree_url[tree_url['curr']['time']]['count'] = urlcnt_cached[insert_id]
+            ipset.update({"_id": row[serverip]}, ipdoc)
 
         # fill data docment record
         fields = {}
         for i in range(34): fields[names[i]] = row[i]
 
         # create insert cached
-        insert_id = tree_url['curr']['key']
         if not record_cached.has_key(insert_id):
             record_cached[insert_id] = []
 
