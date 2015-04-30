@@ -70,11 +70,16 @@ def fetch_all_count():
     fetch_num = 0
     ip = dataset.find()
     for i in ip:
-        fetch_num += len(i['records'])
+        _len = len(i['records'])
+        fetch_num += _len
+        print _len
     print fetch_num
 
 for ip in ips:
+    starttime1 = time.clock()  
     fetch(ip)
-fetch_400500()
-fetch_all_count()
-fetch_url_access()
+    endtime1 = time.clock()  
+    print endtime1 - starttime1
+#fetch_400500()
+#fetch_url_access()
+#fetch_all_count()
