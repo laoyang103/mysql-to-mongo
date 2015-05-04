@@ -57,14 +57,17 @@ def fetch_url_access():
 
 def fetch_all_count():
     fetch_num = 0
+    url_num = 0
     ip_list = ipset.find()
     for ip in ip_list:
         for domain, vdomain in ip.items():
             if domain == "_id": continue
             for url, vurl in vdomain.items():
+                url_num += 1
                 for time, vtime in vurl.items():
                     if time == "curr": continue
                     fetch_num += vtime['count']
+    print url_num
     print fetch_num
 
     fetch_num = 0
@@ -72,14 +75,13 @@ def fetch_all_count():
     for i in ip:
         _len = len(i['records'])
         fetch_num += _len
-        print _len
     print fetch_num
 
-for ip in ips:
-    starttime1 = time.clock()  
-    fetch(ip)
-    endtime1 = time.clock()  
-    print endtime1 - starttime1
+#for ip in ips:
+#    starttime1 = time.clock()  
+#    fetch(ip)
+#    endtime1 = time.clock()  
+#    print endtime1 - starttime1
 #fetch_400500()
 #fetch_url_access()
-#fetch_all_count()
+fetch_all_count()
