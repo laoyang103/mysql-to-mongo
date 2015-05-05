@@ -45,10 +45,11 @@ def fetch_400500(addr):
             {'$match': {'_id': i}}, 
             {'$project': {'_id': 0, 'records.httpreturncode': 1}}, 
             {'$unwind': '$records'}, 
-            {'$match': {'records.httpreturncode': {'$gt': 400}}}
+            {'$match': {'records.httpreturncode': {'$gt': 400}}},
+            {'$group': {'_id': '$records.httpreturncode', 'count': {'$sum': 1}}}
         ]
         data = dataset.aggregate(pipeline)['result']
-        fetch_num += len(data)
+        for d in data: fetch_num += d['count']
     return [len(datakeys), fetch_num]
 
 def fetch_all_count():
