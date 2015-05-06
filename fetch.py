@@ -30,28 +30,6 @@ def fetch(addr):
         fetch_num += len(record['records'])
     return [len(datakeys), fetch_num]
 
-def fetch_400500(addr):
-    ip = ipset.find_one({'_id': addr})
-    datakeys = []
-    for domain, vdomain in ip.items():
-        if domain == '_id': continue
-        for url, vurl in vdomain.items():
-            for time, vtime in vurl.items():
-                if time == 'curr': continue
-                datakeys.append(vtime['key'])
-    fetch_num = 0
-    for i in datakeys:
-        pipeline = [
-            {'$match': {'_id': i}}, 
-            {'$project': {'_id': 0, 'records.httpreturncode': 1}}, 
-            {'$unwind': '$records'}, 
-            {'$match': {'records.httpreturncode': {'$gt': 400}}},
-            {'$group': {'_id': '$records.httpreturncode', 'count': {'$sum': 1}}}
-        ]
-        data = dataset.aggregate(pipeline)['result']
-        for d in data: fetch_num += d['count']
-    return [len(datakeys), fetch_num]
-
 def fetch_all_count():
     fetch_num = 0
     url_num = 0
@@ -74,6 +52,55 @@ def fetch_all_count():
         fetch_num += _len
     print fetch_num
 
+def fetch_400500(addr):
+    ip = ipset.find_one({'_id': addr})
+    datakeys = []
+    for domain, vdomain in ip.items():
+        if domain == '_id': continue
+        for url, vurl in vdomain.items():
+            for time, vtime in vurl.items():
+                if time == 'curr': continue
+                datakeys.append(vtime['key'])
+    fetch_num = 0
+    for i in datakeys:
+        pipeline = [
+            {'$match': {'_id': i}}, 
+            {'$project': {'_id': 0, 'records.httpreturncode': 1}}, 
+            {'$unwind': '$records'}, 
+            {'$match': {'records.httpreturncode': {'$gt': 400}}},
+            {'$group': {'_id': '$records.httpreturncode', 'count': {'$sum': 1}}}
+        ]
+        data = dataset.aggregate(pipeline)['result']
+        for d in data: fetch_num += d['count']
+    return [len(datakeys), fetch_num]
+
+def fetch_url(domain, url):
+    datakeys = []
+    url = ipset.find_one({domain + '.' + url: {'$exists': 'true'}})[domain][url]
+    for time, vtime in url.items():
+        if time == 'curr': continue
+        datakeys.append(vtime['key'])
+
+    total_acc = total_bytes = avg_app_delay = 0
+    for i in datakeys:
+        pipeline = [
+            {'$match': {'_id': i}}, 
+            {'$project': {'_id': 0, 'records._bytes': 1, 'records.appllatency': 1}}, 
+            {'$unwind': '$records'}, 
+            {'$group': {
+                           '_id': 'null', 
+                           'total_acc': {'$sum': 1}, 
+                           'total_bytes': {'$sum': '$records._bytes'}, 
+                           'avg_app_delay': {'$avg': '$records.appllatency'}
+                       }},
+        ]
+        data = dataset.aggregate(pipeline)['result'][0]
+        total_acc += data['total_acc']
+        total_bytes += data['total_bytes']
+        avg_app_delay += data['avg_app_delay']
+    avg_app_delay /= len(datakeys)
+    return [total_acc, total_bytes, avg_app_delay]
+
 #raw_input()
 #fetch_url_access()
 #fetch_all_count()
@@ -82,8 +109,9 @@ def fetch_all_count():
 #    data = fetch(ip)
 #    endtime1 = time.time()  
 #    print endtime1 - starttime1, data[0], data[1], ip
-for ip in ips:
-    starttime1 = time.time()  
-    data = fetch_400500(ip)
-    endtime1 = time.time()  
-    print endtime1 - starttime1, data
+#for ip in ips:
+#    starttime1 = time.time()  
+#    data = fetch_400500(ip)
+#    endtime1 = time.time()  
+#    print endtime1 - starttime1, data
+#print fetch_url('eclick_baidu_com', '/fp_htm')
